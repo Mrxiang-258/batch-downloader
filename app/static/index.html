@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>本地批量下载器</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">⬇</span>
+      <h1>本地批量下载器</h1>
+    </div>
+    <div class="topbar-actions">
+      <span id="conn" class="conn" title="连接状态">连接中…</span>
+      <button id="btn-settings" class="btn ghost">⚙ 设置</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section id="settings-panel" class="panel settings hidden">
+      <h2>设置</h2>
+      <div class="grid">
+        <label class="field span2">
+          <span>默认下载目录</span>
+          <div class="row">
+            <input id="cfg-dir" type="text" placeholder="例如 F:\Downloads">
+            <button id="btn-browse" class="btn">选择…</button>
+            <button id="btn-open-dir" class="btn ghost">打开</button>
+          </div>
+        </label>
+        <label class="field"><span>全局并发数</span>
+          <input id="cfg-global" type="number" min="1" max="64" value="4">
+        </label>
+        <label class="field"><span>单域名并发数</span>
+          <input id="cfg-domain" type="number" min="1" max="32" value="2">
+        </label>
+        <label class="field"><span>连接/读取超时（秒）</span>
+          <input id="cfg-timeout" type="number" min="1" max="600" value="30">
+        </label>
+        <label class="field"><span>失败最大重试次数</span>
+          <input id="cfg-retries" type="number" min="0" max="20" value="3">
+        </label>
+        <label class="field"><span>重名文件策略</span>
+          <select id="cfg-conflict">
+            <option value="rename">自动重命名</option>
+            <option value="overwrite">覆盖</option>
+            <option value="skip">跳过</option>
+          </select>
+        </label>
+        <label class="field"><span>分类保存</span>
+          <select id="cfg-classify">
+            <option value="none">不分类</option>
+            <option value="type">按文件类型</option>
+            <option value="domain">按来源网站</option>
+            <option value="batch">按批次</option>
+          </select>
+        </label>
+        <div class="field span2 subhead">高速下载模式（开启后生效）</div>
+        <label class="field"><span>高速全局并发数</span>
+          <input id="cfg-hs-global" type="number" min="1" max="32" value="8">
+        </label>
+        <label class="field"><span>高速单域名并发数</span>
+          <input id="cfg-hs-domain" type="number" min="1" max="8" value="4">
+        </label>
+        <label class="field"><span>分块下载阈值（MB）</span>
+          <input id="cfg-chunk-threshold" type="number" min="1" max="1024" value="10">
+        </label>
+        <label class="field"><span>单文件最大分块连接数</span>
+          <input id="cfg-max-chunks" type="number" min="2" max="8" value="4">
+        </label>
+        <label class="field span2 check">
+          <input id="cfg-dedupe" type="checkbox" checked>
+          <span>对同一 URL 去重（防止重复下载）</span>
+        </label>
+      </div>
+      <div class="row right">
+        <button id="btn-save-config" class="btn primary">保存设置</button>
+      </div>
+    </section>
+
+    <section class="panel input-panel">
+      <h2>添加下载任务</h2>
+      <textarea id="url-input" rows="5" placeholder="每行一个下载链接（支持 http/https 文件直链）&#10;也可以直接粘贴网页地址，或点击「解析网页」提取其中的文件链接"></textarea>
+      <div class="input-tools">
+        <div class="row grow">
+          <span class="lbl">保存目录</span>
+          <input id="dir-input" type="text" placeholder="留空则使用默认下载目录">
+        </div>
+        <div class="row">
+          <button id="btn-add" class="btn primary">添加下载</button>
+          <button id="btn-parse" class="btn">解析网页</button>
+          <button id="btn-import" class="btn">导入 TXT/CSV</button>
+          <input id="file-input" type="file" accept=".txt,.csv" multiple hidden>
+        </div>
+      </div>
+      <div id="add-feedback" class="feedback"></div>
+    </section>
+
+    <section class="panel stats-bar">
+      <span class="stat" data-stat="total">总计 <b>0</b></span>
+      <span class="stat pending" data-stat="pending">等待 <b>0</b></span>
+      <span class="stat downloading" data-stat="downloading">下载中 <b>0</b></span>
+      <span class="stat completed" data-stat="completed">完成 <b>0</b></span>
+      <span class="stat failed" data-stat="failed">失败 <b>0</b></span>
+      <span class="stat paused" data-stat="paused">暂停 <b>0</b></span>
+      <span class="stat skipped" data-stat="skipped">跳过 <b>0</b></span>
+      <span class="stat" data-stat="speed">速度 <b>0 B/s</b></span>
+      <span class="stat" data-stat="conn">活动连接 <b>0</b></span>
+      <label class="highspeed-toggle" title="高速下载：提高并发并启用大文件分块下载">
+        <input type="checkbox" id="highspeed-switch">
+        <span>⚡ 高速下载</span>
+      </label>
+    </section>
+
+    <section class="panel tasks-panel">
+      <div class="tasks-toolbar">
+        <div class="filter-tabs" id="filter-tabs">
+          <button data-f="all" class="active">全部</button>
+          <button data-f="pending">等待</button>
+          <button data-f="downloading">下载中</button>
+          <button data-f="completed">完成</button>
+          <button data-f="failed">失败</button>
+          <button data-f="paused">暂停</button>
+          <button data-f="skipped">跳过</button>
+          <button data-f="canceled">取消</button>
+        </div>
+        <input id="search" type="text" placeholder="搜索文件名 / URL">
+        <div class="batch-actions">
+          <button id="btn-pause-sel" class="btn sm" title="暂停选中">暂停</button>
+          <button id="btn-resume-sel" class="btn sm" title="继续选中">继续</button>
+          <button id="btn-cancel-sel" class="btn sm" title="取消选中">取消</button>
+          <button id="btn-del-sel" class="btn sm danger" title="删除选中">删除</button>
+          <span class="sep"></span>
+          <button id="btn-pause-all" class="btn sm">暂停全部</button>
+          <button id="btn-resume-all" class="btn sm">继续全部</button>
+          <button id="btn-retry-all" class="btn sm">重试失败</button>
+          <button id="btn-clear-done" class="btn sm">清空已完成</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="task-table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="check-all"></th>
+              <th class="col-name">文件</th>
+              <th class="col-size">大小</th>
+              <th class="col-progress">进度</th>
+              <th class="col-status">状态</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="task-body"></tbody>
+        </table>
+        <div id="empty-hint" class="empty">暂无任务。在上方粘贴下载链接开始。</div>
+      </div>
+      <div class="pager">
+        <span id="page-info"></span>
+        <button id="prev-page" class="btn sm ghost">上一页</button>
+        <button id="next-page" class="btn sm ghost">下一页</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="parse-modal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>网页解析结果 · 发现的资源</h3>
+        <button id="parse-close" class="btn ghost sm">✕</button>
+      </div>
+      <div class="resource-toolbar">
+        <input id="res-search" type="text" placeholder="搜索文件名 / 扩展名 / 域名">
+        <select id="res-sort">
+          <option value="name">按文件名</option>
+          <option value="type">按类型</option>
+          <option value="size">按大小</option>
+          <option value="source">按来源</option>
+        </select>
+        <button id="res-sel-all" class="btn sm">全选当前</button>
+        <button id="res-sel-none" class="btn sm">取消选择</button>
+        <button id="res-sel-invert" class="btn sm">反选</button>
+      </div>
+      <div id="resource-cats" class="resource-cats"></div>
+      <div id="parse-body" class="modal-body"></div>
+      <div class="modal-foot">
+        <span id="res-summary" class="res-summary"></span>
+        <button id="parse-add" class="btn primary">加入下载队列</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
