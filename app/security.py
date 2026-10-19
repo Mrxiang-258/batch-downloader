@@ -151,7 +151,8 @@ def sanitize_filename(name: str, fallback: str = "download") -> str:
 def safe_join(base_dir: str | Path, filename: str) -> Path:
     """将文件名安全地拼接到下载目录内，确保结果不逃逸出该目录。"""
     base = Path(base_dir).resolve()
-    candidate = (base / filename).resolve()
+    # 统一路径分隔符，防止 Windows 风格反斜杠在 POSIX 上绕过逃逸检测
+    candidate = (base / str(filename).replace("\\", "/")).resolve()
     if candidate != base and base not in candidate.parents:
         raise SecurityError(f"非法路径：{filename!r} 逃逸出下载目录")
     return candidate
