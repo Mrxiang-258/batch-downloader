@@ -1,6 +1,8 @@
 # 本地批量下载器
 
-一个运行在本机、带图形界面的批量下载器。输入网页 URL 或一批下载链接，选择保存目录，即可自动并发下载。支持断点续传、失败重试、暂停/恢复、任务持久化、网页链接解析等。
+[![tests](https://github.com/Mrxiang-258/batch-downloader/actions/workflows/test.yml/badge.svg)](https://github.com/Mrxiang-258/batch-downloader/actions/workflows/test.yml)
+
+一个运行在本机、带图形界面的批量下载器。输入网页 URL 或一批下载链接，选择保存目录，即可自动并发下载。支持断点续传、失败重试、暂停/恢复、任务持久化、高速分块下载、网页资源分类解析等。
 
 纯本地运行，不依赖云服务器，不调用任何付费 API。
 
@@ -37,9 +39,9 @@ downloader/
 
 ## 二、如何首次启动
 
-1. 双击 `start.bat`。
+1. 双击 `start.bat`（或打包后的 `批量下载器.exe`）。
 2. 首次运行会自动创建虚拟环境并安装依赖（需要本机已装 Python 3.10+，稍等片刻）。
-3. 启动后浏览器会自动打开 `http://127.0.0.1:8000`。
+3. 启动后弹出应用窗口，直接在里面操作，无需浏览器。
 
 停止：直接按 `Ctrl+C` / 关闭启动窗口，或双击 `stop.bat`。
 

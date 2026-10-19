@@ -1,0 +1,19 @@
+# 默认按文本处理，自动检测
+* text=auto
+
+# 源码与文档统一 LF
+*.py    text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.html  text eol=lf
+*.js    text eol=lf
+*.css   text eol=lf
+*.json  text eol=lf
+*.txt   text eol=lf
+*.gitignore  text eol=lf
+*.gitattributes text eol=lf
+
+# Windows 批处理必须 CRLF，否则 cmd 解析出错
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
